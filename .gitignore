@@ -1,0 +1,20 @@
+# Mac system files
+.DS_Store
+
+# Frontend (Node/React)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# Backend (Python/FastAPI)
+backend/venv/
+backend/env/
+backend/__pycache__/
+backend/*.pyc
+backend/.env
+
+# Database
+*.sqlite3
+*.db
+
