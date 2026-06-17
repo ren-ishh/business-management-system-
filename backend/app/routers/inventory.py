@@ -23,7 +23,10 @@ async def list_dresses(
     if category:
         q = q.where(Dress.category == category)
     if status:
-        q = q.where(Dress.status == status)
+        try:
+            q = q.where(Dress.status == DressStatus(status))
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid status '{status}'. Use: active, retired")
     q = q.order_by(Dress.created_at.desc())
     result = await db.execute(q)
     return result.scalars().all()

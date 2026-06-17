@@ -25,7 +25,9 @@ class Dress(Base):
     category: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
     base_rental_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     status: Mapped[DressStatus] = mapped_column(
-        Enum(DressStatus, name="dress_status"), nullable=False, default=DressStatus.ACTIVE
+        Enum(DressStatus, name="dress_status", values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=DressStatus.ACTIVE
     )
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
