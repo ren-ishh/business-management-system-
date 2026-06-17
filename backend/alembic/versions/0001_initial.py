@@ -16,10 +16,23 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Enable btree_gist for the exclusion constraint (needed to mix uuid = with daterange &&)
+    # 1. Break the transaction to allow EXTENSION creation
+    op.execute("COMMIT")
     op.execute("CREATE EXTENSION IF NOT EXISTS btree_gist")
+    op.execute("BEGIN")
 
-    # --- Enums ---
+    # 2. Full Bulldozer: Drop everything to clear the runway completely
+    op.execute("DROP TABLE IF EXISTS financial_ledger CASCADE")
+    op.execute("DROP TABLE IF EXISTS bookings CASCADE")
+    op.execute("DROP TABLE IF EXISTS inventory CASCADE")
+    op.execute("DROP TABLE IF EXISTS staff_users CASCADE")
+    
+    op.execute("DROP TYPE IF EXISTS user_role CASCADE")
+    op.execute("DROP TYPE IF EXISTS dress_status CASCADE")
+    op.execute("DROP TYPE IF EXISTS booking_status CASCADE")
+    op.execute("DROP TYPE IF EXISTS payment_status CASCADE")
+
+    # 3. Define Enums
     user_role = postgresql.ENUM("admin", "staff", name="user_role")
     dress_status = postgresql.ENUM("active", "retired", name="dress_status")
     booking_status = postgresql.ENUM(
@@ -27,10 +40,8 @@ def upgrade() -> None:
     )
     payment_status = postgresql.ENUM("unpaid", "partial", "settled", name="payment_status")
 
-    user_role.create(op.get_bind())
-    dress_status.create(op.get_bind())
-    booking_status.create(op.get_bind())
-    payment_status.create(op.get_bind())
+    # Note: We do NOT call .create() manually here! 
+    # Alembic's op.create_table will automatically create the ENUMs for us.
 
     # --- staff_users ---
     op.create_table(
@@ -93,9 +104,6 @@ def upgrade() -> None:
         "ix_bookings_dress_daterange", "bookings", ["dress_id", "date_range"], postgresql_using="gist"
     )
 
-    # DB-level guarantee: no two ACTIVE bookings for the same dress can have overlapping
-    # date ranges. This is the real anti-double-booking engine — race-condition proof
-    # even under concurrent requests.
     op.execute(
         """
         ALTER TABLE bookings
@@ -139,4 +147,4 @@ def downgrade() -> None:
     op.drop_table("staff_users")
 
     for enum_name in ("payment_status", "booking_status", "dress_status", "user_role"):
-        op.execute(f"DROP TYPE {enum_name}")
+        op.execute(f"DROP TYPE IF EXISTS {enum_name} CASCADE")
